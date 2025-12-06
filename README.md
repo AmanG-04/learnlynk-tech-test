@@ -165,3 +165,15 @@ Write **8–12 lines** describing how you would implement a Stripe Checkout flow
 3. Share the link.
 
 Good luck.
+
+## Stripe Answer
+
+- When a counselor initiates checkout, I create a `payment_requests` row with `application_id`, amount, currency, and status `pending` so we can reconcile attempts.  
+- Immediately after inserting, I call `stripe.checkout.sessions.create` with the amount, success/cancel URLs, and embed `payment_request_id` and `application_id` in `metadata`.  
+- I store the returned `session.id`, `payment_intent`, `url`, and `expires_at` back onto the same `payment_requests` row for traceability.  
+- The frontend simply redirects the applicant to the session URL; no sensitive keys are exposed client-side.  
+- Stripe sends us `checkout.session.completed`; I verify the webhook signature before trusting the payload.  
+- Inside the webhook handler I fetch the `payment_request` using `metadata.payment_request_id` to ensure the session matches what we expect.  
+- If the session is paid, I update `payment_requests.status` to `paid`, record `amount_total`, currency, and the definitive `payment_intent`.  
+- I then update the related application (e.g., status `fee_paid`, `paid_at` timestamp) so downstream workflows know payment cleared.  
+- Finally I enqueue any follow-up actions (email confirmation, counselor notification) so the applicant gets an immediate acknowledgment.  

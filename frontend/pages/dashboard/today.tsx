@@ -29,8 +29,26 @@ export default function TodayDashboard() {
       //   .from("tasks")
       //   .select("*")
       //   .eq("status", "open");
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const startIso = startOfDay.toISOString();
+      const endOfDay = new Date(startOfDay);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      const endIso = endOfDay.toISOString();
 
-      setTasks([]);
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id,type,status,application_id,due_at")
+        .gte("due_at", startIso)
+        .lt("due_at", endIso)
+        .neq("status", "completed")
+        .order("due_at", { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setTasks(data ?? []);
     } catch (err: any) {
       console.error(err);
       setError("Failed to load tasks");
@@ -44,6 +62,16 @@ export default function TodayDashboard() {
       // TODO:
       // - Update task.status to 'completed'
       // - Re-fetch tasks or update state optimistically
+      const { error } = await supabase
+        .from("tasks")
+        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) {
+        throw error;
+      }
+
+      setTasks((prev) => prev.filter((task) => task.id !== id));
     } catch (err: any) {
       console.error(err);
       alert("Failed to update task");

@@ -19,6 +19,10 @@ create table if not exists public.leads (
 
 -- TODO: add useful indexes for leads:
 -- - by tenant_id, owner_id, stage, created_at
+create index if not exists leads_tenant_id_idx on public.leads (tenant_id);
+create index if not exists leads_owner_id_idx on public.leads (owner_id);
+create index if not exists leads_stage_idx on public.leads (stage);
+create index if not exists leads_created_at_idx on public.leads (created_at desc);
 
 
 -- Applications table
@@ -36,6 +40,9 @@ create table if not exists public.applications (
 
 -- TODO: add useful indexes for applications:
 -- - by tenant_id, lead_id, stage
+create index if not exists applications_tenant_id_idx on public.applications (tenant_id);
+create index if not exists applications_lead_id_idx on public.applications (lead_id);
+create index if not exists applications_stage_idx on public.applications (stage);
 
 
 -- Tasks table
@@ -55,3 +62,10 @@ create table if not exists public.tasks (
 -- - add check constraint for type in ('call','email','review')
 -- - add constraint that due_at >= created_at
 -- - add indexes for tasks due today by tenant_id, due_at, status
+
+alter table public.tasks
+  add constraint tasks_type_check check (type in ('call', 'email', 'review')),
+  add constraint tasks_due_after_created_check check (due_at >= created_at);
+
+create index if not exists tasks_tenant_due_idx on public.tasks (tenant_id, due_at);
+create index if not exists tasks_tenant_status_idx on public.tasks (tenant_id, status);
