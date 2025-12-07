@@ -3,11 +3,38 @@
 
 create extension if not exists "pgcrypto";
 
+-- Teams table (supports counselor/team visibility per RLS requirements)
+create table if not exists public.teams (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null,
+  name text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists teams_tenant_id_idx on public.teams (tenant_id);
+
+-- User-team memberships
+create table if not exists public.user_teams (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null,
+  user_id uuid not null,
+  team_id uuid not null references public.teams(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, team_id)
+);
+
+create index if not exists user_teams_user_idx on public.user_teams (user_id);
+create index if not exists user_teams_team_idx on public.user_teams (team_id);
+create index if not exists user_teams_tenant_idx on public.user_teams (tenant_id);
+
 -- Leads table
 create table if not exists public.leads (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null,
   owner_id uuid not null,
+  team_id uuid references public.teams(id) on delete set null,
   email text,
   phone text,
   full_name text,
@@ -23,6 +50,7 @@ create index if not exists leads_tenant_id_idx on public.leads (tenant_id);
 create index if not exists leads_owner_id_idx on public.leads (owner_id);
 create index if not exists leads_stage_idx on public.leads (stage);
 create index if not exists leads_created_at_idx on public.leads (created_at desc);
+create index if not exists leads_team_id_idx on public.leads (team_id);
 
 
 -- Applications table
